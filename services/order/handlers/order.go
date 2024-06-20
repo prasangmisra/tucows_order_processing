@@ -48,6 +48,8 @@ func CreateOrderHandler(db *sql.DB, rdb *redis.Client) http.HandlerFunc {
 			"amount":      orderRead.Amount,
 			"customer_id": orderRead.CustomerID,
 			"product_id":  orderRead.ProductID,
+			"created_at":  orderRead.CreatedAt,
+			"updated_at":  orderRead.UpdatedAt,
 		}
 		paymentRequestJSON, _ := json.Marshal(paymentRequest)
 		rdb.Publish(ctx, "payment_requests", paymentRequestJSON)
