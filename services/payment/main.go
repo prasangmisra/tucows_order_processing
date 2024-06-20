@@ -15,6 +15,11 @@ import (
 
 var ctx = context.Background()
 
+const (
+	PAYMENT_SUCCESS = "success"
+	PAYMENT_FAILURE = "failure"
+)
+
 func main() {
 	dbUser := os.Getenv("DB_USER")
 	dbPass := os.Getenv("DB_PASS")
@@ -33,6 +38,11 @@ func main() {
 		Addr: "redis:" + redisPort,
 	})
 
+	_, err = rdb.Ping(ctx).Result()
+	if err != nil {
+		log.Fatalf("Unable to connect to Redis: %v\n", err)
+	}
+
 	subscriber := rdb.Subscribe(ctx, "payment_requests")
 	channel := subscriber.Channel()
 
@@ -45,25 +55,15 @@ func main() {
 				continue
 			}
 
-			status := "success"
+			status := PAYMENT_SUCCESS
 			if paymentRequest.Amount > 1000 {
-				status = "failure"
-			}
-
-			_, err = conn.Exec(ctx, "UPDATE orders SET status = $1, updated_at = NOW() WHERE id = $2", status, paymentRequest.OrderID)
-			if err != nil {
-				log.Printf("Error updating order status: %v\n", err)
-				continue
+				status = PAYMENT_FAILURE
 			}
 
 			// Notify order service of payment result
 			notifyOrderService(paymentRequest.OrderID, status, rdb)
 		}
 	}()
-
-	http.HandleFunc("/payment", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Payment Processing Service")
-	})
 
 	fmt.Println("Payment Processing Service is running on port " + paymentServicePort)
 	http.ListenAndServe(":"+paymentServicePort, nil)

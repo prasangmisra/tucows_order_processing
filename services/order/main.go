@@ -3,54 +3,72 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 
+	"order/database"
 	"order/handlers"
+	"order/redisconn"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
-	_ "github.com/jackc/pgx/v4/stdlib" // Import the pgx driver
 )
 
-var ctx = context.Background()
-
 func main() {
-	dbUser := os.Getenv("DB_USER")
-	dbPass := os.Getenv("DB_PASS")
-	dbPort := os.Getenv("DB_PORT")
-	dbName := os.Getenv("DB_NAME")
-	redisPort := os.Getenv("REDIS_PORT")
+
 	orderServicePort := os.Getenv("ORDER_SERVICE_PORT")
 
-	connStr := "postgres://" + dbUser + ":" + dbPass + "@db:" + dbPort + "/" + dbName
-	db, err := sql.Open("pgx", connStr)
+	db, err := database.Connect()
 	if err != nil {
-		log.Fatalf("Unable to connect to database: %v\n", err)
+		log.Fatalf("%v\n", err)
 	}
 	defer db.Close()
 
-	if err := db.Ping(); err != nil {
-		log.Fatalf("Unable to connect to database: %v\n", err)
-	}
-
-	rdb := redis.NewClient(&redis.Options{
-		Addr: "redis:" + redisPort,
-	})
-
-	_, err = rdb.Ping(ctx).Result()
+	rdb, err := redisconn.Connect()
 	if err != nil {
-		log.Fatalf("Unable to connect to Redis: %v\n", err)
+		log.Fatalf("%v\n", err)
 	}
 
+	channel := redisconn.Subscribe(rdb, "payment_results")
+
+	go handlePaymentResults(db, channel)
+
+	router := setupRouter(db, rdb)
+	fmt.Println("Order Management Service is running on port " + orderServicePort)
+	http.ListenAndServe(":"+orderServicePort, router)
+
+}
+
+func handlePaymentResults(db *sql.DB, channel <-chan *redis.Message) {
+	ctx := context.Background()
+	for msg := range channel {
+		var notification map[string]interface{}
+		err := json.Unmarshal([]byte(msg.Payload), &notification)
+		if err != nil {
+			log.Printf("Error unmarshalling payment result notification: %v\n", err)
+			continue
+		}
+		orderID := int(notification["order_id"].(float64))
+		status := notification["status"].(string)
+
+		_, err = db.ExecContext(ctx, "UPDATE orders SET status = $1, updated_at = NOW() WHERE id = $2", status, orderID)
+		if err != nil {
+			log.Printf("Error updating order status in order service: %v\n", err)
+			continue
+		}
+	}
+}
+
+func setupRouter(db *sql.DB, rdb *redis.Client) *mux.Router {
 	router := mux.NewRouter()
+
 	router.HandleFunc("/product", handlers.CreateProductHandler(db)).Methods("POST")
 	router.HandleFunc("/product/{id}", handlers.GetProductHandler(db)).Methods("GET")
 	router.HandleFunc("/order", handlers.CreateOrderHandler(db, rdb)).Methods("POST")
 	router.HandleFunc("/order/{id}", handlers.GetOrderHandler(db)).Methods("GET")
 
-	fmt.Println("Order Management Service is running on port " + orderServicePort)
-	http.ListenAndServe(":"+orderServicePort, router)
+	return router
 }
