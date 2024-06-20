@@ -11,10 +11,12 @@ CREATE TABLE IF NOT EXISTS products (
 
 CREATE TABLE IF NOT EXISTS orders (
     id SERIAL PRIMARY KEY,
-	customer_id INT NOT NULL REFERENCES customers(id),
-	product_id INT NOT NULL REFERENCES products(id),
-	status TEXT NOT NULL,
-	amount DECIMAL NOT NULL
+    customer_id INT NOT NULL,
+    product_id INT NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    amount FLOAT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 	);
 
 INSERT INTO customers (id, name) VALUES (1, 'John Doe') ON CONFLICT DO NOTHING;

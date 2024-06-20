@@ -32,8 +32,10 @@ func CreateOrderHandler(db *sql.DB, rdb *redis.Client) http.HandlerFunc {
 		}
 
 		var orderRead models.OrderRead
-		err := db.QueryRow("INSERT INTO orders (customer_id, product_id, status, amount) VALUES ($1, $2, 'pending', $3) RETURNING id, customer_id, product_id, status, amount",
-			orderWrite.CustomerID, orderWrite.ProductID, orderWrite.Amount).Scan(&orderRead.ID, &orderRead.CustomerID, &orderRead.ProductID, &orderRead.Status, &orderRead.Amount)
+		err := db.QueryRow(
+			"INSERT INTO orders (customer_id, product_id, status, amount, created_at, updated_at) VALUES ($1, $2, 'pending', $3, NOW(), NOW()) RETURNING id, customer_id, product_id, status, amount, created_at, updated_at",
+			orderWrite.CustomerID, orderWrite.ProductID, orderWrite.Amount).Scan(
+			&orderRead.ID, &orderRead.CustomerID, &orderRead.ProductID, &orderRead.Status, &orderRead.Amount, &orderRead.CreatedAt, &orderRead.UpdatedAt)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(models.ErrorResponse{Error: "Failed to create order: " + err.Error()})
@@ -67,7 +69,10 @@ func GetOrderHandler(db *sql.DB) http.HandlerFunc {
 		}
 
 		var orderRead models.OrderRead
-		err = db.QueryRow("SELECT id, customer_id, product_id, status, amount FROM orders WHERE id = $1", id).Scan(&orderRead.ID, &orderRead.CustomerID, &orderRead.ProductID, &orderRead.Status, &orderRead.Amount)
+		err = db.QueryRow(
+			"SELECT id, customer_id, product_id, status, amount, created_at, updated_at FROM orders WHERE id = $1",
+			id).Scan(
+			&orderRead.ID, &orderRead.CustomerID, &orderRead.ProductID, &orderRead.Status, &orderRead.Amount, &orderRead.CreatedAt, &orderRead.UpdatedAt)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				w.WriteHeader(http.StatusNotFound)

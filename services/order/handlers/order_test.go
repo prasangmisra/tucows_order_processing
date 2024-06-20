@@ -9,6 +9,7 @@ import (
 	"order/models"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/go-redis/redis/v8"
@@ -31,12 +32,20 @@ func TestCreateOrderHandler(t *testing.T) {
 
 	t.Run("successful order creation", func(t *testing.T) {
 		orderWrite := models.OrderWrite{CustomerID: 1, ProductID: 1, Amount: 100.0}
-		orderRead := models.OrderRead{ID: 1, CustomerID: 1, ProductID: 1, Status: "pending", Amount: 100.0}
+		orderRead := models.OrderRead{
+			ID:         1,
+			CustomerID: 1,
+			ProductID:  1,
+			Status:     "pending",
+			Amount:     100.0,
+			CreatedAt:  time.Now(),
+			UpdatedAt:  time.Now(),
+		}
 
 		mock.ExpectQuery("INSERT INTO orders").
 			WithArgs(orderWrite.CustomerID, orderWrite.ProductID, orderWrite.Amount).
-			WillReturnRows(sqlmock.NewRows([]string{"id", "customer_id", "product_id", "status", "amount"}).
-				AddRow(orderRead.ID, orderRead.CustomerID, orderRead.ProductID, orderRead.Status, orderRead.Amount))
+			WillReturnRows(sqlmock.NewRows([]string{"id", "customer_id", "product_id", "status", "amount", "created_at", "updated_at"}).
+				AddRow(orderRead.ID, orderRead.CustomerID, orderRead.ProductID, orderRead.Status, orderRead.Amount, orderRead.CreatedAt, orderRead.UpdatedAt))
 
 		body, _ := json.Marshal(orderWrite)
 		req, err := http.NewRequest("POST", "/order", bytes.NewBuffer(body))
@@ -55,7 +64,12 @@ func TestCreateOrderHandler(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		assert.Equal(t, orderRead, result)
+		assert.Equal(t, orderRead.CustomerID, result.CustomerID)
+		assert.Equal(t, orderRead.ProductID, result.ProductID)
+		assert.Equal(t, orderRead.Status, result.Status)
+		assert.Equal(t, orderRead.Amount, result.Amount)
+		assert.WithinDuration(t, orderRead.CreatedAt, result.CreatedAt, time.Second)
+		assert.WithinDuration(t, orderRead.UpdatedAt, result.UpdatedAt, time.Second)
 	})
 
 	t.Run("invalid request payload", func(t *testing.T) {
@@ -102,7 +116,7 @@ func TestCreateOrderHandler(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		assert.Equal(t, models.ErrorResponse{Error: "Failed to create order: sql: connection is already closed"}, result)
+		assert.Equal(t, models.ErrorResponse{Error: "Failed to create order: " + sql.ErrConnDone.Error()}, result)
 	})
 }
 
@@ -116,12 +130,20 @@ func TestGetOrderHandler(t *testing.T) {
 	handler := GetOrderHandler(db)
 
 	t.Run("successful order retrieval", func(t *testing.T) {
-		orderRead := models.OrderRead{ID: 1, CustomerID: 1, ProductID: 1, Status: "pending", Amount: 100.0}
+		orderRead := models.OrderRead{
+			ID:         1,
+			CustomerID: 1,
+			ProductID:  1,
+			Status:     "pending",
+			Amount:     100.0,
+			CreatedAt:  time.Now(),
+			UpdatedAt:  time.Now(),
+		}
 
-		mock.ExpectQuery("SELECT id, customer_id, product_id, status, amount FROM orders WHERE id = \\$1").
+		mock.ExpectQuery("SELECT id, customer_id, product_id, status, amount, created_at, updated_at FROM orders WHERE id = \\$1").
 			WithArgs(orderRead.ID).
-			WillReturnRows(sqlmock.NewRows([]string{"id", "customer_id", "product_id", "status", "amount"}).
-				AddRow(orderRead.ID, orderRead.CustomerID, orderRead.ProductID, orderRead.Status, orderRead.Amount))
+			WillReturnRows(sqlmock.NewRows([]string{"id", "customer_id", "product_id", "status", "amount", "created_at", "updated_at"}).
+				AddRow(orderRead.ID, orderRead.CustomerID, orderRead.ProductID, orderRead.Status, orderRead.Amount, orderRead.CreatedAt, orderRead.UpdatedAt))
 
 		req, err := http.NewRequest("GET", "/order/"+strconv.Itoa(orderRead.ID), nil)
 		if err != nil {
@@ -140,13 +162,18 @@ func TestGetOrderHandler(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		assert.Equal(t, orderRead, result)
+		assert.Equal(t, orderRead.CustomerID, result.CustomerID)
+		assert.Equal(t, orderRead.ProductID, result.ProductID)
+		assert.Equal(t, orderRead.Status, result.Status)
+		assert.Equal(t, orderRead.Amount, result.Amount)
+		assert.WithinDuration(t, orderRead.CreatedAt, result.CreatedAt, time.Second)
+		assert.WithinDuration(t, orderRead.UpdatedAt, result.UpdatedAt, time.Second)
 	})
 
 	t.Run("order not found", func(t *testing.T) {
 		orderID := 2
 
-		mock.ExpectQuery("SELECT id, customer_id, product_id, status, amount FROM orders WHERE id = \\$1").
+		mock.ExpectQuery("SELECT id, customer_id, product_id, status, amount, created_at, updated_at FROM orders WHERE id = \\$1").
 			WithArgs(orderID).
 			WillReturnError(sql.ErrNoRows)
 
