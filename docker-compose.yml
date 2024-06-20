@@ -1,22 +1,6 @@
-version: '3.7'
+version: '3.8'
 
 services:
-  order:
-    build:
-      context: ./services/order
-    ports:
-      - "8080:8080"
-    depends_on:
-      - db
-      - redis
-  payment:
-    build:
-      context: ./services/payment
-    ports:
-      - "8081:8081"
-    depends_on:
-      - db
-      - redis
   db:
     image: postgres:13-alpine
     environment:
@@ -25,7 +9,28 @@ services:
       POSTGRES_PASSWORD: password
     ports:
       - "5432:5432"
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
   redis:
     image: redis:alpine
     ports:
       - "6379:6379"
+
+  order:
+    build:
+      context: ./services/order
+    depends_on:
+      - db
+      - redis
+    ports:
+      - "8080:8080"
+
+  payment:
+    build:
+      context: ./services/payment
+    depends_on:
+      - db
+      - redis
+    ports:
+      - "8081:8081"
