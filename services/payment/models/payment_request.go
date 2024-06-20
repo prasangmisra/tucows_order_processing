@@ -1,12 +1,16 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type PaymentRequest struct {
-	OrderID    int       `json:"order_id"`
+	OrderID    uuid.UUID `json:"order_id"`
 	Amount     float64   `json:"amount"`
-	CustomerID int       `json:"customer_id"`
-	ProductID  int       `json:"product_id"`
+	CustomerID uuid.UUID `json:"customer_id"`
+	ProductID  uuid.UUID `json:"product_id"`
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
 }
