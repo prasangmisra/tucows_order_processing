@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"order/models"
-	"strconv"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 )
@@ -25,8 +25,9 @@ func TestCreateProductHandler(t *testing.T) {
 	handler := CreateProductHandler(db)
 
 	t.Run("successful product creation", func(t *testing.T) {
+		productID := uuid.New()
 		productWrite := models.ProductWrite{Name: "New Product", Price: 99.99}
-		productRead := models.ProductRead{ID: 1, Name: "New Product", Price: 99.99}
+		productRead := models.ProductRead{ID: productID, Name: "New Product", Price: 99.99}
 
 		mock.ExpectQuery("INSERT INTO products").
 			WithArgs(productWrite.Name, productWrite.Price).
@@ -83,18 +84,19 @@ func TestGetProductHandler(t *testing.T) {
 	handler := GetProductHandler(db)
 
 	t.Run("successful product retrieval", func(t *testing.T) {
-		productRead := models.ProductRead{ID: 1, Name: "Sample Product", Price: 99.99}
+		productID := uuid.New()
+		productRead := models.ProductRead{ID: productID, Name: "Sample Product", Price: 99.99}
 
 		mock.ExpectQuery("SELECT id, name, price FROM products where id = \\$1").
 			WithArgs(productRead.ID).
 			WillReturnRows(sqlmock.NewRows([]string{"id", "name", "price"}).AddRow(productRead.ID, productRead.Name, productRead.Price))
 
-		req, err := http.NewRequest("GET", "/product/"+strconv.Itoa(productRead.ID), nil)
+		req, err := http.NewRequest("GET", "/product/"+productRead.ID.String(), nil)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		req = mux.SetURLVars(req, map[string]string{"id": strconv.Itoa(productRead.ID)})
+		req = mux.SetURLVars(req, map[string]string{"id": productRead.ID.String()})
 		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
@@ -110,18 +112,18 @@ func TestGetProductHandler(t *testing.T) {
 	})
 
 	t.Run("product not found", func(t *testing.T) {
-		productID := 2
+		productID := uuid.New().String()
 
 		mock.ExpectQuery("SELECT id, name, price FROM products where id = \\$1").
 			WithArgs(productID).
 			WillReturnError(sql.ErrNoRows)
 
-		req, err := http.NewRequest("GET", "/product/"+strconv.Itoa(productID), nil)
+		req, err := http.NewRequest("GET", "/product/"+productID, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		req = mux.SetURLVars(req, map[string]string{"id": strconv.Itoa(productID)})
+		req = mux.SetURLVars(req, map[string]string{"id": productID})
 		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 

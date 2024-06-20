@@ -6,9 +6,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"order/models"
-	"strconv"
 
 	"github.com/go-redis/redis/v8"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
 
@@ -33,8 +33,8 @@ func CreateOrderHandler(db *sql.DB, rdb *redis.Client) http.HandlerFunc {
 
 		var orderRead models.OrderRead
 		err := db.QueryRow(
-			"INSERT INTO orders (customer_id, product_id, status, amount, created_at, updated_at) VALUES ($1, $2, 'pending', $3, NOW(), NOW()) RETURNING id, customer_id, product_id, status, amount, created_at, updated_at",
-			orderWrite.CustomerID, orderWrite.ProductID, orderWrite.Amount).Scan(
+			"INSERT INTO orders (customer_id, product_id, status, amount, created_at, updated_at) VALUES ($1, $2, $3, $4, NOW(), NOW()) RETURNING id, customer_id, product_id, status, amount, created_at, updated_at",
+			orderWrite.CustomerID, orderWrite.ProductID, models.Pending, orderWrite.Amount).Scan(
 			&orderRead.ID, &orderRead.CustomerID, &orderRead.ProductID, &orderRead.Status, &orderRead.Amount, &orderRead.CreatedAt, &orderRead.UpdatedAt)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -63,7 +63,8 @@ func GetOrderHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		w.Header().Set("Content-Type", "application/json")
-		id, err := strconv.Atoi(vars["id"])
+		id := vars["id"]
+		_, err := uuid.Parse(id)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(models.ErrorResponse{Error: "Invalid order ID"})

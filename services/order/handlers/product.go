@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"order/models"
-	"strconv"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
 
@@ -47,7 +47,8 @@ func GetProductHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		w.Header().Set("Content-Type", "application/json")
-		id, err := strconv.Atoi(vars["id"])
+		id := vars["id"]
+		_, err := uuid.Parse(id)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(models.ErrorResponse{Error: "Invalid product ID"})

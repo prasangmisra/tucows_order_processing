@@ -7,12 +7,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"order/models"
-	"strconv"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/go-redis/redis/v8"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 )
@@ -31,19 +31,22 @@ func TestCreateOrderHandler(t *testing.T) {
 	handler := CreateOrderHandler(db, rdb)
 
 	t.Run("successful order creation", func(t *testing.T) {
-		orderWrite := models.OrderWrite{CustomerID: 1, ProductID: 1, Amount: 100.0}
+		customerID := uuid.New()
+		productID := uuid.New()
+		orderID := uuid.New()
+		orderWrite := models.OrderWrite{CustomerID: customerID, ProductID: productID, Amount: 100.0}
 		orderRead := models.OrderRead{
-			ID:         1,
-			CustomerID: 1,
-			ProductID:  1,
-			Status:     "pending",
+			ID:         orderID,
+			CustomerID: customerID,
+			ProductID:  productID,
+			Status:     models.Pending,
 			Amount:     100.0,
 			CreatedAt:  time.Now(),
 			UpdatedAt:  time.Now(),
 		}
 
 		mock.ExpectQuery("INSERT INTO orders").
-			WithArgs(orderWrite.CustomerID, orderWrite.ProductID, orderWrite.Amount).
+			WithArgs(orderWrite.CustomerID, orderWrite.ProductID, models.Pending, orderWrite.Amount).
 			WillReturnRows(sqlmock.NewRows([]string{"id", "customer_id", "product_id", "status", "amount", "created_at", "updated_at"}).
 				AddRow(orderRead.ID, orderRead.CustomerID, orderRead.ProductID, orderRead.Status, orderRead.Amount, orderRead.CreatedAt, orderRead.UpdatedAt))
 
@@ -73,7 +76,7 @@ func TestCreateOrderHandler(t *testing.T) {
 	})
 
 	t.Run("invalid request payload", func(t *testing.T) {
-		req, err := http.NewRequest("POST", "/order", bytes.NewBuffer([]byte(`{"customer_id": 1}`)))
+		req, err := http.NewRequest("POST", "/order", bytes.NewBuffer([]byte(`{"customer_id": "invalid-uuid"}`)))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -89,14 +92,16 @@ func TestCreateOrderHandler(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		assert.Equal(t, models.ErrorResponse{Error: "Key: 'OrderWrite.ProductID' Error:Field validation for 'ProductID' failed on the 'required' tag\nKey: 'OrderWrite.Amount' Error:Field validation for 'Amount' failed on the 'required' tag"}, result)
+		assert.Equal(t, models.ErrorResponse{Error: "Invalid request payload"}, result)
 	})
 
 	t.Run("database error on order creation", func(t *testing.T) {
-		orderWrite := models.OrderWrite{CustomerID: 1, ProductID: 1, Amount: 100.0}
+		customerID := uuid.New()
+		productID := uuid.New()
+		orderWrite := models.OrderWrite{CustomerID: customerID, ProductID: productID, Amount: 100.0}
 
 		mock.ExpectQuery("INSERT INTO orders").
-			WithArgs(orderWrite.CustomerID, orderWrite.ProductID, orderWrite.Amount).
+			WithArgs(orderWrite.CustomerID, orderWrite.ProductID, models.Pending, orderWrite.Amount).
 			WillReturnError(sql.ErrConnDone)
 
 		body, _ := json.Marshal(orderWrite)
@@ -130,11 +135,14 @@ func TestGetOrderHandler(t *testing.T) {
 	handler := GetOrderHandler(db)
 
 	t.Run("successful order retrieval", func(t *testing.T) {
+		customerID := uuid.New()
+		productID := uuid.New()
+		orderID := uuid.New()
 		orderRead := models.OrderRead{
-			ID:         1,
-			CustomerID: 1,
-			ProductID:  1,
-			Status:     "pending",
+			ID:         orderID,
+			CustomerID: customerID,
+			ProductID:  productID,
+			Status:     models.Pending,
 			Amount:     100.0,
 			CreatedAt:  time.Now(),
 			UpdatedAt:  time.Now(),
@@ -145,12 +153,12 @@ func TestGetOrderHandler(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"id", "customer_id", "product_id", "status", "amount", "created_at", "updated_at"}).
 				AddRow(orderRead.ID, orderRead.CustomerID, orderRead.ProductID, orderRead.Status, orderRead.Amount, orderRead.CreatedAt, orderRead.UpdatedAt))
 
-		req, err := http.NewRequest("GET", "/order/"+strconv.Itoa(orderRead.ID), nil)
+		req, err := http.NewRequest("GET", "/order/"+orderRead.ID.String(), nil)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		req = mux.SetURLVars(req, map[string]string{"id": strconv.Itoa(orderRead.ID)})
+		req = mux.SetURLVars(req, map[string]string{"id": orderRead.ID.String()})
 		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
@@ -171,18 +179,18 @@ func TestGetOrderHandler(t *testing.T) {
 	})
 
 	t.Run("order not found", func(t *testing.T) {
-		orderID := 2
+		orderID := uuid.New().String()
 
 		mock.ExpectQuery("SELECT id, customer_id, product_id, status, amount, created_at, updated_at FROM orders WHERE id = \\$1").
 			WithArgs(orderID).
 			WillReturnError(sql.ErrNoRows)
 
-		req, err := http.NewRequest("GET", "/order/"+strconv.Itoa(orderID), nil)
+		req, err := http.NewRequest("GET", "/order/"+orderID, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		req = mux.SetURLVars(req, map[string]string{"id": strconv.Itoa(orderID)})
+		req = mux.SetURLVars(req, map[string]string{"id": orderID})
 		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
