@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"order/handlers"
 
@@ -16,17 +17,15 @@ import (
 
 var ctx = context.Background()
 
-const (
-	DB_USER      = "user"
-	DB_PASS      = "password"
-	DB_PORT      = "5432"
-	DB_DATABASE  = "orderdb"
-	REDIS_PORT   = "6379"
-	SERVICE_PORT = "8080"
-)
-
 func main() {
-	connStr := "postgres://" + DB_USER + ":" + DB_PASS + "@db:" + DB_PORT + "/" + DB_DATABASE
+	dbUser := os.Getenv("DB_USER")
+	dbPass := os.Getenv("DB_PASS")
+	dbPort := os.Getenv("DB_PORT")
+	dbName := os.Getenv("DB_NAME")
+	redisPort := os.Getenv("REDIS_PORT")
+	orderServicePort := os.Getenv("ORDER_SERVICE_PORT")
+
+	connStr := "postgres://" + dbUser + ":" + dbPass + "@db:" + dbPort + "/" + dbName
 	db, err := sql.Open("pgx", connStr)
 	if err != nil {
 		log.Fatalf("Unable to connect to database: %v\n", err)
@@ -38,7 +37,7 @@ func main() {
 	}
 
 	rdb := redis.NewClient(&redis.Options{
-		Addr: "redis:" + REDIS_PORT,
+		Addr: "redis:" + redisPort,
 	})
 
 	_, err = rdb.Ping(ctx).Result()
@@ -52,6 +51,6 @@ func main() {
 	router.HandleFunc("/order", handlers.CreateOrderHandler(db, rdb)).Methods("POST")
 	router.HandleFunc("/order/{id}", handlers.GetOrderHandler(db)).Methods("GET")
 
-	fmt.Println("Order Management Service is running on port " + SERVICE_PORT)
-	http.ListenAndServe(":"+SERVICE_PORT, router)
+	fmt.Println("Order Management Service is running on port " + orderServicePort)
+	http.ListenAndServe(":"+orderServicePort, router)
 }
