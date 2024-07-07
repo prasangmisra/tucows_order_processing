@@ -1,0 +1,25 @@
+title: order_write
+x-stoplight:
+  id: v13iiztre1m2s
+x-tags:
+  - Orders
+type: object
+required:
+  - customer_id
+  - product_id
+  - amount
+properties:
+  customer_id:
+    type: string
+    x-stoplight:
+      id: azelsy1rcavt6
+    format: uuid
+  product_id:
+    type: string
+    x-stoplight:
+      id: whhz81kz18d4y
+    format: uuid
+  amount:
+    type: integer
+    x-stoplight:
+      id: ec7zdum4jqutj
