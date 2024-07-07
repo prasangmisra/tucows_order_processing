@@ -2,7 +2,7 @@ openapi: 3.1.0
 x-stoplight:
   id: 3jg6i94xwtgr1
 info:
-  title: Create Product
+  title: 'Create Products, Orders'
   version: '1.0'
 servers:
   - url: 'http://localhost:3000'
