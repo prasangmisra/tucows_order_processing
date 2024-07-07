@@ -1,0 +1,122 @@
+openapi: 3.1.0
+x-stoplight:
+  id: 3jg6i94xwtgr1
+info:
+  title: Create Product
+  version: '1.0'
+servers:
+  - url: 'http://localhost:3000'
+paths:
+  /product:
+    post:
+      summary: Add a product
+      tags: []
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/product_read'
+                    x-stoplight:
+                      id: mj64kjd59p9xu
+      operationId: post-product
+      x-stoplight:
+        id: 1h7zo9zn1l1lm
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/product_write'
+components:
+  schemas:
+    customer_read:
+      title: Customer-Read
+      type: object
+      examples:
+        - id: 142
+          firstName: Alice
+          lastName: Smith
+          email: alice.smith@gmail.com
+          dateOfBirth: '1997-10-31'
+          emailVerified: true
+          signUpDate: '2019-08-24'
+      x-stoplight:
+        id: xgt7669xc1qs3
+      x-tags:
+        - Customer
+      required:
+        - id
+        - name
+        - email
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the given user.
+          x-stoplight:
+            id: fdbkijgtaf1c7
+          format: uuid
+        name:
+          type: string
+          x-stoplight:
+            id: uavgcsk729w3d
+        email:
+          type: string
+          format: email
+          x-stoplight:
+            id: ne6dmso0n64li
+        createDate:
+          type: string
+          format: date
+          description: The date that the user was created.
+          x-stoplight:
+            id: 7pzrlu5atk1yr
+    product_read:
+      title: product_read
+      x-stoplight:
+        id: q3j9oms912qam
+      allOf:
+        - $ref: '#/components/schemas/product_write'
+          x-stoplight:
+            id: 4g9lz8sxduyhg
+        - type: object
+          x-stoplight:
+            id: hfemh8bykywvz
+          properties:
+            id:
+              type: string
+              x-stoplight:
+                id: ioon5ttbdnxd7
+              format: uuid
+            created_at:
+              type: string
+              x-stoplight:
+                id: q11a2vuztjjhs
+              format: date-time
+            updated_at:
+              type: string
+              x-stoplight:
+                id: fq0v0eutrx978
+              format: date-time
+    product_write:
+      title: product_write
+      x-stoplight:
+        id: ssvl72bbn6te2
+      type: object
+      required:
+        - name
+        - price
+      properties:
+        name:
+          type: string
+          x-stoplight:
+            id: yfi8n2pdehhx4
+        price:
+          type: number
+          x-stoplight:
+            id: msz4diuyz28fe
