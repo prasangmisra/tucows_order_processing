@@ -15,8 +15,9 @@ import (
 var ctx = context.Background()
 
 const (
-	PAYMENT_SUCCESS = "success"
-	PAYMENT_FAILURE = "failure"
+	PAYMENT_SUCCESS   = "success"
+	PAYMENT_FAILURE   = "failure"
+	PAYMENT_THRESHOLD = 1000
 )
 
 func main() {
@@ -70,7 +71,7 @@ func processPaymentRequests(rdb *redis.Client, done chan bool) {
 		}
 
 		status := PAYMENT_SUCCESS
-		if paymentRequest["amount"].(float64) > 1000 {
+		if paymentRequest["amount"].(float64) > PAYMENT_THRESHOLD {
 			status = PAYMENT_FAILURE
 		}
 
