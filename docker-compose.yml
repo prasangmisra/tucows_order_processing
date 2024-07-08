@@ -45,7 +45,6 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - ORDER_SERVICE_PORT=8080
-      - PAYMENT_SERVICE_PORT=8080
 
   payment:
     build:
@@ -62,5 +61,4 @@ services:
       - DB_NAME=orderdb
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - ORDER_SERVICE_PORT=8080
-      - PAYMENT_SERVICE_PORT=8080
+      - PAYMENT_SERVICE_PORT=8081
