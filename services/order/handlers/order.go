@@ -42,21 +42,25 @@ func CreateOrderHandler(db *sql.DB, rdb *redis.Client) http.HandlerFunc {
 			return
 		}
 
-		// Send payment request to payment service
-		paymentRequest := map[string]interface{}{
-			"order_id":    orderRead.ID,
-			"amount":      orderRead.Amount,
-			"customer_id": orderRead.CustomerID,
-			"product_id":  orderRead.ProductID,
-			"created_at":  orderRead.CreatedAt,
-			"updated_at":  orderRead.UpdatedAt,
-		}
-		paymentRequestJSON, _ := json.Marshal(paymentRequest)
-		rdb.Publish(ctx, "payment_requests", paymentRequestJSON)
+		go sendOrderForPayment(orderRead, rdb)
 
 		w.WriteHeader(http.StatusCreated)
 		json.NewEncoder(w).Encode(orderRead)
 	}
+}
+
+func sendOrderForPayment(orderRead models.OrderRead, rdb *redis.Client) {
+	// Send payment request to payment service
+	paymentRequest := map[string]interface{}{
+		"order_id":    orderRead.ID,
+		"amount":      orderRead.Amount,
+		"customer_id": orderRead.CustomerID,
+		"product_id":  orderRead.ProductID,
+		"created_at":  orderRead.CreatedAt,
+		"updated_at":  orderRead.UpdatedAt,
+	}
+	paymentRequestJSON, _ := json.Marshal(paymentRequest)
+	rdb.Publish(ctx, "payment_requests", paymentRequestJSON)
 }
 
 func GetOrderHandler(db *sql.DB) http.HandlerFunc {

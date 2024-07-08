@@ -65,10 +65,10 @@ func handlePaymentResults(db *sql.DB, channel <-chan *redis.Message) {
 func setupRouter(db *sql.DB, rdb *redis.Client) *mux.Router {
 	router := mux.NewRouter()
 
-	router.HandleFunc("/product", handlers.CreateProductHandler(db)).Methods("POST")
-	router.HandleFunc("/product/{id}", handlers.GetProductHandler(db)).Methods("GET")
-	router.HandleFunc("/order", handlers.CreateOrderHandler(db, rdb)).Methods("POST")
-	router.HandleFunc("/order/{id}", handlers.GetOrderHandler(db)).Methods("GET")
+	router.HandleFunc("/product", handlers.CreateProductHandler(db)).Methods(http.MethodPost)
+	router.HandleFunc("/product/{id}", handlers.GetProductHandler(db)).Methods(http.MethodGet)
+	router.HandleFunc("/order", handlers.CreateOrderHandler(db, rdb)).Methods(http.MethodPost)
+	router.HandleFunc("/order/{id}", handlers.GetOrderHandler(db)).Methods(http.MethodGet)
 
 	return router
 }

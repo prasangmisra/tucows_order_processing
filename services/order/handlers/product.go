@@ -31,7 +31,7 @@ func CreateProductHandler(db *sql.DB) http.HandlerFunc {
 		}
 
 		var productRead models.ProductRead
-		err := db.QueryRow("INSERT INTO products (name, price) VALUES ($1, $2) RETURNING id, name, price", productWrite.Name, productWrite.Price).Scan(&productRead.ID, &productRead.Name, &productRead.Price)
+		err := db.QueryRow("INSERT INTO products (name, price) VALUES ($1, $2) RETURNING id, name, price, created_at, updated_at", productWrite.Name, productWrite.Price).Scan(&productRead.ID, &productRead.Name, &productRead.Price, &productRead.CreatedAt, &productRead.UpdatedAt)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(models.ErrorResponse{Error: "Failed to create product: " + err.Error()})
@@ -56,7 +56,7 @@ func GetProductHandler(db *sql.DB) http.HandlerFunc {
 		}
 
 		var productRead models.ProductRead
-		err = db.QueryRow("SELECT id, name, price FROM products where id = $1", id).Scan(&productRead.ID, &productRead.Name, &productRead.Price)
+		err = db.QueryRow("SELECT id, name, price, created_at, updated_at FROM products where id = $1", id).Scan(&productRead.ID, &productRead.Name, &productRead.Price, &productRead.CreatedAt, &productRead.UpdatedAt)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				w.WriteHeader(http.StatusNotFound)
